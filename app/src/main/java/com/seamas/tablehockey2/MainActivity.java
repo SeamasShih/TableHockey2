@@ -1,12 +1,18 @@
 package com.seamas.tablehockey2;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 
 import com.seamas.tablehockey2.jbox2d.collision.shapes.CircleShape;
 import com.seamas.tablehockey2.jbox2d.collision.shapes.PolygonShape;
@@ -35,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
     private Body[] balls = new Body[9];
     private Body[] boxes = new Body[6];
     private ArrayList<Integer> fellBalls = new ArrayList<>();
+
+    private InterfaceView view;
+    private ValueAnimator animator = ValueAnimator.ofInt(0, 100);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +74,39 @@ public class MainActivity extends AppCompatActivity {
         SimpleServiceView serviceView = findViewById(R.id.view);
         serviceView.setCanvasUpdateProcess(new Process());
         serviceView.setFPS(60);
+
+        view = findViewById(R.id.interfaceView);
+        view.setLayerHeight(edge * .7f);
+        view.setList(fellBalls);
+        view.setWhiteBall(ball);
+        view.setRate(rate);
+
+        animator.setDuration(1500);
+        animator.addListener(new AnimatorListenerAdapter() {
+            boolean isCancel = false;
+
+            @Override
+            public void onAnimationStart(Animator animation) {
+                isCancel = false;
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                isCancel = true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (!isCancel)
+                    view.setCanHitBall(true);
+            }
+        });
+
+        Button button = findViewById(R.id.btn);
+        button.setOnClickListener(v -> {
+            view.startGame();
+            v.setVisibility(View.GONE);
+        });
     }
 
     @Override
@@ -152,6 +194,7 @@ public class MainActivity extends AppCompatActivity {
         bodyDef.type = BodyType.DYNAMIC;
         bodyDef.linearDamping = 1f;
         bodyDef.userData = new UserData();
+        bodyDef.bullet = true;
 
         ball = world.createBody(bodyDef);
         ball.createFixture(fixtureDef);
@@ -180,6 +223,7 @@ public class MainActivity extends AppCompatActivity {
         public void onDraw(Canvas canvas) {
             world.step(1f / 60f, 10, 8);
             Vec2 p;
+            boolean isMoving = false;
 
             {
                 //draw table
@@ -210,14 +254,16 @@ public class MainActivity extends AppCompatActivity {
                 for (int i = 0; i < balls.length; i++) {
                     if (!((UserData) balls[i].getUserData()).isDrawing)
                         continue;
+                    if (balls[i].getLinearVelocity().length() > 0.000001)
+                        isMoving = true;
                     p = balls[i].getPosition();
                     paint.setColor(colors[i]);
                     canvas.drawCircle(p.x * rate, p.y * rate, HockeyTableSize.ballRadius * rate, paint);
                     paint.setColor(Color.WHITE);
                     canvas.drawCircle(p.x * rate, p.y * rate, HockeyTableSize.ballRadius * rate / 2, paint);
                     if (i > 7) {
-                        canvas.drawArc(p.x * rate - HockeyTableSize.ballRadius * rate, p.y * rate - HockeyTableSize.ballRadius * rate, p.x * rate + HockeyTableSize.ballRadius * rate, p.y * rate + HockeyTableSize.ballRadius * rate, -50, 100,false, paint);
-                        canvas.drawArc(p.x * rate - HockeyTableSize.ballRadius * rate, p.y * rate - HockeyTableSize.ballRadius * rate, p.x * rate + HockeyTableSize.ballRadius * rate, p.y * rate + HockeyTableSize.ballRadius * rate, 130, 100,false, paint);
+                        canvas.drawArc(p.x * rate - HockeyTableSize.ballRadius * rate, p.y * rate - HockeyTableSize.ballRadius * rate, p.x * rate + HockeyTableSize.ballRadius * rate, p.y * rate + HockeyTableSize.ballRadius * rate, -50, 100, false, paint);
+                        canvas.drawArc(p.x * rate - HockeyTableSize.ballRadius * rate, p.y * rate - HockeyTableSize.ballRadius * rate, p.x * rate + HockeyTableSize.ballRadius * rate, p.y * rate + HockeyTableSize.ballRadius * rate, 130, 100, false, paint);
                     }
                     paint.setColor(Color.BLACK);
                     canvas.drawText(String.valueOf(i + 1), p.x * rate, p.y * rate + adjY, paint);
@@ -225,15 +271,22 @@ public class MainActivity extends AppCompatActivity {
                         world.destroyBody(balls[i]);
                         ((UserData) balls[i].getUserData()).isDrawing = false;
                         fellBalls.add(i);
+                        view.invalidate();
                     }
                 }
                 p = ball.getPosition();
                 paint.setColor(Color.WHITE);
                 canvas.drawCircle(p.x * rate, p.y * rate, HockeyTableSize.ballRadius * rate, paint);
+                if (ball.getLinearVelocity().length() > 0.000001)
+                    isMoving = true;
+                if (isInCornerPocket(p) || isInSidePocket(p)) {
+                    //todo lose
+                }
             }
 
             {
                 //draw boxes
+                paint.setColor(view.isCanHitBall() ? Color.WHITE : Color.RED);
                 for (int i = 0; i < boxes.length; i++) {
                     p = boxes[i].getPosition();
                     switch (i) {
@@ -251,6 +304,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
+            if (isMoving) {
+                if (animator.isRunning())
+                    runOnUiThread(() -> animator.cancel());
+            } else if (!animator.isRunning()) {
+                runOnUiThread(() -> animator.cancel());
+                runOnUiThread(() -> animator.start());
+            }
         }
     }
 }
