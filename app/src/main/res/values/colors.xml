@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#008577</color>
+    <color name="colorPrimaryDark">#00574B</color>
+    <color name="colorAccent">#D81B60</color>
+
+    <color name="colorTableHockeyBackground">#747474</color>
+    <color name="colorTableHockeyWood">#94682F</color>
+    <color name="colorTableHockeyFabric">#257405</color>
+
+    <array name="colorTableHockeyBalls">
+        <item>#F5DE4E</item>
+        <item>#465CFF</item>
+        <item>#FF2525</item>
+        <item>#9152FF</item>
+        <item>#FF7B14</item>
+        <item>#22DB01</item>
+        <item>#A23000</item>
+        <item>#000</item>
+        <item>#F5DE4E</item>
+    </array>
+</resources>
