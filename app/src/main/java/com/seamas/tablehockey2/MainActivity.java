@@ -3,23 +3,26 @@ package com.seamas.tablehockey2;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.WindowManager;
 
-import org.jbox2d.collision.shapes.CircleShape;
-import org.jbox2d.collision.shapes.PolygonShape;
-import org.jbox2d.common.Vec2;
-import org.jbox2d.dynamics.Body;
-import org.jbox2d.dynamics.BodyDef;
-import org.jbox2d.dynamics.BodyType;
-import org.jbox2d.dynamics.FixtureDef;
-import org.jbox2d.dynamics.World;
+import com.seamas.tablehockey2.jbox2d.collision.shapes.CircleShape;
+import com.seamas.tablehockey2.jbox2d.collision.shapes.PolygonShape;
+import com.seamas.tablehockey2.jbox2d.common.Vec2;
+import com.seamas.tablehockey2.jbox2d.dynamics.Body;
+import com.seamas.tablehockey2.jbox2d.dynamics.BodyDef;
+import com.seamas.tablehockey2.jbox2d.dynamics.BodyType;
+import com.seamas.tablehockey2.jbox2d.dynamics.FixtureDef;
+import com.seamas.tablehockey2.jbox2d.dynamics.World;
+
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
     private Paint paint = new Paint();
+    private float adjY;
 
     private float rate;
     private World world;
@@ -31,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private Body ball;
     private Body[] balls = new Body[9];
     private Body[] boxes = new Body[6];
+    private ArrayList<Integer> fellBalls = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +55,9 @@ public class MainActivity extends AppCompatActivity {
         rate = tableWidth / HockeyTableSize.innerRectWidth;
 
         paint.setAntiAlias(true);
+        paint.setTextAlign(Paint.Align.CENTER);
+        paint.setTextSize(HockeyTableSize.ballRadius * rate);
+        adjY = (paint.getFontMetrics().descent - paint.getFontMetrics().ascent) / 2 - paint.getFontMetrics().descent;
 
         createWorld();
         createObject();
@@ -123,7 +130,8 @@ public class MainActivity extends AppCompatActivity {
         BodyDef bodyDef = new BodyDef();
         bodyDef.position.set(x / rate, y / rate);
         bodyDef.type = BodyType.DYNAMIC;
-        bodyDef.linearDamping = 0.4f;
+        bodyDef.linearDamping = 1f;
+        bodyDef.userData = new UserData();
 
         balls[i] = world.createBody(bodyDef);
         balls[i].createFixture(fixtureDef);
@@ -142,11 +150,29 @@ public class MainActivity extends AppCompatActivity {
         BodyDef bodyDef = new BodyDef();
         bodyDef.position.set(x / rate, y / rate);
         bodyDef.type = BodyType.DYNAMIC;
-        bodyDef.linearDamping = 0.4f;
+        bodyDef.linearDamping = 1f;
+        bodyDef.userData = new UserData();
 
         ball = world.createBody(bodyDef);
         ball.createFixture(fixtureDef);
-        ball.setLinearVelocity(new Vec2(0, -10));
+    }
+
+    private boolean isInCornerPocket(Vec2 ball) {
+        Vec2 v = new Vec2(ball.x - HockeyTableSize.innerRectWidth / 2, ball.y - HockeyTableSize.innerRectHeight / 2);
+        if (v.length() < HockeyTableSize.cornerPocketRadius)
+            return true;
+        v.set(ball.x - HockeyTableSize.innerRectWidth / 2, ball.y + HockeyTableSize.innerRectHeight / 2);
+        if (v.length() < HockeyTableSize.cornerPocketRadius)
+            return true;
+        v.set(ball.x + HockeyTableSize.innerRectWidth / 2, ball.y - HockeyTableSize.innerRectHeight / 2);
+        if (v.length() < HockeyTableSize.cornerPocketRadius)
+            return true;
+        v.set(ball.x + HockeyTableSize.innerRectWidth / 2, ball.y + HockeyTableSize.innerRectHeight / 2);
+        return v.length() < HockeyTableSize.cornerPocketRadius;
+    }
+
+    private boolean isInSidePocket(Vec2 ball) {
+        return ball.x < -HockeyTableSize.innerRectWidth / 2 || ball.x > HockeyTableSize.innerRectWidth / 2;
     }
 
     private class Process implements CanvasUpdateProcess {
@@ -182,9 +208,24 @@ public class MainActivity extends AppCompatActivity {
                 //draw balls
                 int[] colors = getResources().getIntArray(R.array.colorTableHockeyBalls);
                 for (int i = 0; i < balls.length; i++) {
+                    if (!((UserData) balls[i].getUserData()).isDrawing)
+                        continue;
                     p = balls[i].getPosition();
                     paint.setColor(colors[i]);
                     canvas.drawCircle(p.x * rate, p.y * rate, HockeyTableSize.ballRadius * rate, paint);
+                    paint.setColor(Color.WHITE);
+                    canvas.drawCircle(p.x * rate, p.y * rate, HockeyTableSize.ballRadius * rate / 2, paint);
+                    if (i > 7) {
+                        canvas.drawArc(p.x * rate - HockeyTableSize.ballRadius * rate, p.y * rate - HockeyTableSize.ballRadius * rate, p.x * rate + HockeyTableSize.ballRadius * rate, p.y * rate + HockeyTableSize.ballRadius * rate, -50, 100,false, paint);
+                        canvas.drawArc(p.x * rate - HockeyTableSize.ballRadius * rate, p.y * rate - HockeyTableSize.ballRadius * rate, p.x * rate + HockeyTableSize.ballRadius * rate, p.y * rate + HockeyTableSize.ballRadius * rate, 130, 100,false, paint);
+                    }
+                    paint.setColor(Color.BLACK);
+                    canvas.drawText(String.valueOf(i + 1), p.x * rate, p.y * rate + adjY, paint);
+                    if (isInCornerPocket(p) || isInSidePocket(p)) {
+                        world.destroyBody(balls[i]);
+                        ((UserData) balls[i].getUserData()).isDrawing = false;
+                        fellBalls.add(i);
+                    }
                 }
                 p = ball.getPosition();
                 paint.setColor(Color.WHITE);
