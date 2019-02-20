@@ -38,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private World world;
     private boolean firstTouch = true;
     private boolean isLegalHit = true;
+    private boolean hasAlreadyKickedOff = false;
     private RecoverStatus recoverStatus = new RecoverStatus();
     private int minBall = 0;
 
@@ -158,6 +159,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void restartGame() {
+        view.gamePrepare();
+        button.setText("START");
+        button.setOnClickListener(btn -> {
+            view.gameStart();
+            button.setVisibility(View.GONE);
+            textView.setVisibility(View.GONE);
+        });
+        textView.setVisibility(View.VISIBLE);
+        textView.setText("MOVE BALL");
+
         InitialBallSites initialBallSites = new InitialBallSites(rate);
         for (Body ball1 : balls) {
             ball1.setActive(false);
@@ -181,6 +192,7 @@ public class MainActivity extends AppCompatActivity {
         view.setWhiteBall(ball);
         view.invalidate();
         isLegalHit = true;
+        hasAlreadyKickedOff = false;
     }
 
     private void saveGameStatus() {
@@ -194,7 +206,52 @@ public class MainActivity extends AppCompatActivity {
         recoverStatus.balls.addAll(fellBalls);
     }
 
+    private void reKickOff(){
+        view.gamePrepare();
+        button.setText("START");
+        button.setVisibility(View.VISIBLE);
+        button.setOnClickListener(btn -> {
+            view.gameStart();
+            button.setVisibility(View.GONE);
+            textView.setVisibility(View.GONE);
+        });
+        textView.setVisibility(View.VISIBLE);
+        textView.setText("MOVE BALL");
+
+        for (Body ball1 : balls) {
+            ball1.setActive(false);
+        }
+        ball.setActive(false);
+        for (int i = 0; i < balls.length; i++) {
+            balls[i].setLinearVelocity(new Vec2());
+            balls[i].setTransform(recoverStatus.positions[i], 0);
+            UserData userData = new UserData(0);
+            userData.set(recoverStatus.userData[i]);
+            balls[i].setUserData(userData);
+        }
+        ball.setLinearVelocity(new Vec2());
+        ball.setTransform(recoverStatus.whitePosition, 0);
+        UserData userData = new UserData(0);
+        userData.set(recoverStatus.whiteUserData);
+        ball.setUserData(userData);
+        for (Body ball1 : balls) {
+            ball1.setActive(((UserData) ball1.getUserData()).isDrawing);
+        }
+        ball.setActive(((UserData) ball.getUserData()).isDrawing);
+
+        view.setWhiteBall(ball);
+        fellBalls.clear();
+        fellBalls.addAll(recoverStatus.balls);
+        isLegalHit = true;
+        view.invalidate();
+    }
+
     private void recoverGame() {
+        if (!hasAlreadyKickedOff) {
+            reKickOff();
+            return;
+        }
+
         for (Body ball1 : balls) {
             ball1.setActive(false);
         }
@@ -242,7 +299,8 @@ public class MainActivity extends AppCompatActivity {
                             }
                             recoverGame();
                         });
-                    }
+                    } else
+                        hasAlreadyKickedOff = true;
                     firstTouch = false;
                 }
             }
@@ -439,15 +497,7 @@ public class MainActivity extends AppCompatActivity {
                                 if (button.getVisibility() != View.VISIBLE)
                                     button.setVisibility(View.VISIBLE);
                                 button.setText(view.isIs1P() ? "1P WIN!" : "2P WIN!");
-                                button.setOnClickListener(v -> {
-                                    view.gamePrepare();
-                                    button.setText("START");
-                                    button.setOnClickListener(btn -> {
-                                        view.gameStart();
-                                        button.setVisibility(View.GONE);
-                                    });
-                                    restartGame();
-                                });
+                                button.setOnClickListener(v -> restartGame());
                             });
                         }
                         view.invalidate();

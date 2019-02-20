@@ -8,6 +8,7 @@ import android.graphics.Paint;
 import android.graphics.PathEffect;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -166,6 +167,8 @@ public class InterfaceView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        Log.d("Seamas","??? = " + mode);
+
         int[] colors = getResources().getIntArray(R.array.colorTableHockeyBalls);
 
         canvas.save();
@@ -202,6 +205,7 @@ public class InterfaceView extends View {
                 canvas.translate(getWidth() >> 1, getHeight() >> 1);
                 paint.setColor(Color.WHITE);
                 canvas.drawLine(-SnookerSize.innerRectWidth / 2 * rate, SnookerSize.innerRectHeight / 4 * rate, SnookerSize.innerRectWidth / 2 * rate, SnookerSize.innerRectHeight / 4 * rate, paint);
+                break;
             case AIMING:
                 canvas.translate(getWidth() >> 1, getHeight() >> 1);
                 Vec2 p = ball.getPosition();
