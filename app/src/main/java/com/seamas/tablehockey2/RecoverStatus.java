@@ -14,9 +14,9 @@ public class RecoverStatus {
     public RecoverStatus() {
         for (int i = 0; i < positions.length; i++) {
             positions[i] = new Vec2();
-            userData[i] = new UserData();
+            userData[i] = new UserData(i);
         }
         whitePosition = new Vec2();
-        whiteUserData = new UserData();
+        whiteUserData = new UserData(-1);
     }
 }

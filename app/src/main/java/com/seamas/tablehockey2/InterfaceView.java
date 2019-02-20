@@ -102,15 +102,16 @@ public class InterfaceView extends View {
                         x = -SnookerSize.innerRectWidth / 2 + SnookerSize.ballRadius;
                     else if (x > SnookerSize.innerRectWidth / 2 - SnookerSize.ballRadius)
                         x = SnookerSize.innerRectWidth / 2 - SnookerSize.ballRadius;
-                    if (y < SnookerSize.innerRectHeight / 4 + SnookerSize.ballRadius)
-                        y = SnookerSize.innerRectHeight / 4 + SnookerSize.ballRadius;
+                    if (y < SnookerSize.innerRectHeight / 4)
+                        y = SnookerSize.innerRectHeight / 4;
                     else if (y > SnookerSize.innerRectHeight / 2 - SnookerSize.ballRadius)
                         y = SnookerSize.innerRectHeight / 2 - SnookerSize.ballRadius;
                     ball.setTransform(new Vec2(x, y), 0);
                     break;
             }
+            return true;
         } else if (mode == MODE.END) {
-
+            return true;
         } else if (mode == MODE.FREE) {
             float x = (event.getX() - (getWidth() >> 1)) / rate;
             float y = (event.getY() - (getHeight() >> 1)) / rate;
@@ -123,6 +124,7 @@ public class InterfaceView extends View {
             else if (y > SnookerSize.innerRectHeight / 2 - SnookerSize.ballRadius)
                 y = SnookerSize.innerRectHeight / 2 - SnookerSize.ballRadius;
             ball.setTransform(new Vec2(x, y), 0);
+            return true;
         } else if (canHitBall) {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -152,8 +154,9 @@ public class InterfaceView extends View {
                     invalidate();
                     break;
             }
+            return true;
         }
-        return true;
+        return false;
     }
 
     @Override
@@ -191,6 +194,10 @@ public class InterfaceView extends View {
         canvas.restore();
 
         switch (mode) {
+            case START:
+                canvas.translate(getWidth() >> 1, getHeight() >> 1);
+                paint.setColor(Color.WHITE);
+                canvas.drawLine(-SnookerSize.innerRectWidth / 2 * rate, SnookerSize.innerRectHeight / 4 * rate, SnookerSize.innerRectWidth / 2 * rate, SnookerSize.innerRectHeight / 4 * rate, paint);
             case AIMING:
                 canvas.translate(getWidth() >> 1, getHeight() >> 1);
                 Vec2 p = ball.getPosition();

@@ -29,6 +29,15 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="START"
+        app:layout_constraintTop_toTopOf="@id/view"
+        app:layout_constraintLeft_toLeftOf="@id/view"
+        app:layout_constraintRight_toRightOf="@id/view" />
+
+    <TextView
+        android:id="@+id/message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="MOVE BALL"
         app:layout_constraintBottom_toBottomOf="@id/view"
         app:layout_constraintLeft_toLeftOf="@id/view"
         app:layout_constraintRight_toRightOf="@id/view"

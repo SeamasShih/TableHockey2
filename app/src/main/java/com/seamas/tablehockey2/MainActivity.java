@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.TextView;
 
 import com.seamas.tablehockey2.jbox2d.callbacks.ContactImpulse;
 import com.seamas.tablehockey2.jbox2d.callbacks.ContactListener;
@@ -38,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean firstTouch = true;
     private boolean isLegalHit = true;
     private RecoverStatus recoverStatus = new RecoverStatus();
+    private int minBall = 0;
 
     private float tableWidth;
     private float tableHeight;
@@ -51,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private InterfaceView view;
     private ValueAnimator animator = ValueAnimator.ofInt(0, 100);
     private Button button;
+    private TextView textView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -120,7 +123,10 @@ public class MainActivity extends AppCompatActivity {
         button.setOnClickListener(v -> {
             view.gameStart();
             v.setVisibility(View.GONE);
+            textView.setVisibility(View.GONE);
         });
+
+        textView = findViewById(R.id.message);
     }
 
     @Override
@@ -160,28 +166,23 @@ public class MainActivity extends AppCompatActivity {
     private void saveGameStatus() {
         for (int i = 0; i < balls.length; i++) {
             recoverStatus.positions[i].set(balls[i].getPosition());
-            recoverStatus.userData[i].isDrawing = ((UserData) balls[i].getUserData()).isDrawing;
+            recoverStatus.userData[i] = ((UserData) balls[i].getUserData());
         }
         recoverStatus.whitePosition.set(ball.getPosition());
-        recoverStatus.whiteUserData.isDrawing = ((UserData) ball.getUserData()).isDrawing;
+        recoverStatus.whiteUserData = ((UserData) ball.getUserData());
         recoverStatus.balls.clear();
         recoverStatus.balls.addAll(fellBalls);
     }
 
     private void recoverGame() {
-        ball.getLinearVelocity().setZero();
-        ball.setTransform(recoverStatus.whitePosition, 0);
         for (int i = 0; i < balls.length; i++) {
-            balls[i].getLinearVelocity().setZero();
-            balls[i].setTransform(recoverStatus.positions[i], 0);
+            world.destroyBody(balls[i]);
+            createColorBall(i, recoverStatus.positions[i].x, recoverStatus.positions[i].y, SnookerSize.ballRadius * rate);
+            balls[i].setUserData(recoverStatus.userData[i]);
         }
-        for (int i = 0; i < balls.length; i++) {
-            if (recoverStatus.userData[i].isDrawing != ((UserData) balls[i].getUserData()).isDrawing) {
-                createColorBall(i, recoverStatus.positions[i].x, recoverStatus.positions[i].y, SnookerSize.ballRadius * rate);
-            }
-        }
-        if (recoverStatus.whiteUserData.isDrawing != ((UserData) ball.getUserData()).isDrawing)
-            createWhiteBall(recoverStatus.whitePosition.x, recoverStatus.whitePosition.y, SnookerSize.ballRadius * rate);
+        world.destroyBody(ball);
+        createWhiteBall(recoverStatus.whitePosition.x, recoverStatus.whitePosition.y, SnookerSize.ballRadius * rate);
+        ball.setUserData(recoverStatus.whiteUserData);
         view.setWhiteBall(ball);
         fellBalls.clear();
         fellBalls.addAll(recoverStatus.balls);
@@ -196,13 +197,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void beginContact(Contact contact) {
                 if (firstTouch && view.isGaming() && contact.m_fixtureA.getBody().getUserData() != null && contact.m_fixtureB.getBody().getUserData() != null) {
-                    int minBall = 0;
-                    for (int i = 0; i < balls.length; i++) {
-                        if ((((UserData) balls[i].getUserData()).isDrawing)) {
-                            minBall = i;
-                            break;
-                        }
-                    }
+                    Log.d("Seamas", "a = " + ((UserData) contact.m_fixtureA.getBody().getUserData()).order + " b = " + ((UserData) contact.m_fixtureB.getBody().getUserData()).order);
                     if ((contact.m_fixtureA.getBody() != balls[minBall] || contact.m_fixtureB.getBody() != ball) &&
                             (contact.m_fixtureB.getBody() != balls[minBall] || contact.m_fixtureA.getBody() != ball)) {
                         isLegalHit = false;
@@ -282,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
         bodyDef.position.set(x / rate, y / rate);
         bodyDef.type = BodyType.DYNAMIC;
         bodyDef.linearDamping = 1f;
-        bodyDef.userData = new UserData();
+        bodyDef.userData = new UserData(i);
         bodyDef.bullet = true;
 
         balls[i] = world.createBody(bodyDef);
@@ -303,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
         bodyDef.position.set(x / rate, y / rate);
         bodyDef.type = BodyType.DYNAMIC;
         bodyDef.linearDamping = 1f;
-        bodyDef.userData = new UserData();
+        bodyDef.userData = new UserData(-1);
         bodyDef.bullet = true;
 
         ball = world.createBody(bodyDef);
@@ -335,8 +330,21 @@ public class MainActivity extends AppCompatActivity {
         button.setOnClickListener(v -> {
             view.gameStart();
             v.setVisibility(View.GONE);
+            textView.setVisibility(View.GONE);
         });
         view.gameFreeMode();
+
+        textView.setVisibility(View.VISIBLE);
+        textView.setText("FREE BALL");
+    }
+
+    private void defineMinBall() {
+        for (int i = 0; i < balls.length; i++) {
+            if (!fellBalls.contains(i)) {
+                minBall = i;
+                break;
+            }
+        }
     }
 
     private class Process implements CanvasUpdateProcess {
@@ -409,6 +417,7 @@ public class MainActivity extends AppCompatActivity {
                                 });
                             });
                         }
+                        defineMinBall();
                         view.invalidate();
                     }
                 }
@@ -448,13 +457,13 @@ public class MainActivity extends AppCompatActivity {
 
             {
                 //debug
-//                Body body = world.getBodyList();
-//                for (int i = 0; i < world.getBodyCount(); i++) {
-//                    p = body.getPosition();
-//                    paint.setColor(Color.GRAY);
-//                    canvas.drawCircle(p.x * rate, p.y * rate, 10, paint);
-//                    body = body.getNext();
-//                }
+                Body body = world.getBodyList();
+                for (int i = 0; i < world.getBodyCount(); i++) {
+                    p = body.getPosition();
+                    paint.setColor(Color.GRAY);
+                    canvas.drawCircle(p.x * rate, p.y * rate, 10, paint);
+                    body = body.getNext();
+                }
             }
 
             if (isMoving) {
