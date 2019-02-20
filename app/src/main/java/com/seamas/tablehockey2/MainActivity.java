@@ -36,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private float rate;
     private World world;
     private boolean firstTouch = true;
+    private boolean isLegalHit = true;
     private RecoverStatus recoverStatus = new RecoverStatus();
 
     private float tableWidth;
@@ -145,12 +146,15 @@ public class MainActivity extends AppCompatActivity {
     private void restartGame() {
         InitialBallSites initialBallSites = new InitialBallSites(rate);
         for (int i = 0; i < balls.length; i++) {
+            world.destroyBody(balls[i]);
             createColorBall(i, initialBallSites.x[i], initialBallSites.y[i], SnookerSize.ballRadius * rate);
         }
+        world.destroyBody(ball);
         createWhiteBall(0, tableHeight / 4, SnookerSize.ballRadius * rate);
         fellBalls.clear();
         view.setWhiteBall(ball);
         view.invalidate();
+        isLegalHit = true;
     }
 
     private void saveGameStatus() {
@@ -160,6 +164,8 @@ public class MainActivity extends AppCompatActivity {
         }
         recoverStatus.whitePosition.set(ball.getPosition());
         recoverStatus.whiteUserData.isDrawing = ((UserData) ball.getUserData()).isDrawing;
+        recoverStatus.balls.clear();
+        recoverStatus.balls.addAll(fellBalls);
     }
 
     private void recoverGame() {
@@ -176,6 +182,11 @@ public class MainActivity extends AppCompatActivity {
         }
         if (recoverStatus.whiteUserData.isDrawing != ((UserData) ball.getUserData()).isDrawing)
             createWhiteBall(recoverStatus.whitePosition.x, recoverStatus.whitePosition.y, SnookerSize.ballRadius * rate);
+        view.setWhiteBall(ball);
+        fellBalls.clear();
+        fellBalls.addAll(recoverStatus.balls);
+        isLegalHit = true;
+        view.invalidate();
     }
 
     private void createWorld() {
@@ -194,6 +205,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     if ((contact.m_fixtureA.getBody() != balls[minBall] || contact.m_fixtureB.getBody() != ball) &&
                             (contact.m_fixtureB.getBody() != balls[minBall] || contact.m_fixtureA.getBody() != ball)) {
+                        isLegalHit = false;
                         runOnUiThread(() -> {
                             try {
                                 Thread.sleep(500);
@@ -271,6 +283,7 @@ public class MainActivity extends AppCompatActivity {
         bodyDef.type = BodyType.DYNAMIC;
         bodyDef.linearDamping = 1f;
         bodyDef.userData = new UserData();
+        bodyDef.bullet = true;
 
         balls[i] = world.createBody(bodyDef);
         balls[i].createFixture(fixtureDef);
@@ -313,6 +326,17 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isInSidePocket(Vec2 ball) {
         return ball.x < -SnookerSize.innerRectWidth / 2 || ball.x > SnookerSize.innerRectWidth / 2;
+    }
+
+    private void freeMode() {
+        recoverGame();
+        button.setVisibility(View.VISIBLE);
+        button.setText("START");
+        button.setOnClickListener(v -> {
+            view.gameStart();
+            v.setVisibility(View.GONE);
+        });
+        view.gameFreeMode();
     }
 
     private class Process implements CanvasUpdateProcess {
@@ -364,7 +388,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     paint.setColor(Color.BLACK);
                     canvas.drawText(String.valueOf(i + 1), p.x * rate, p.y * rate + adjY, paint);
-                    if (isInCornerPocket(p) || isInSidePocket(p)) {
+                    if ((isInCornerPocket(p) || isInSidePocket(p)) && isLegalHit) {
                         world.destroyBody(balls[i]);
                         ((UserData) balls[i].getUserData()).isDrawing = false;
                         fellBalls.add(i);
@@ -394,24 +418,10 @@ public class MainActivity extends AppCompatActivity {
                     canvas.drawCircle(p.x * rate, p.y * rate, SnookerSize.ballRadius * rate, paint);
                     if (ball.getLinearVelocity().length() > 0.000001)
                         isMoving = true;
-                    if (isInCornerPocket(p) || isInSidePocket(p)) {
+                    if ((isInCornerPocket(p) || isInSidePocket(p)) && isLegalHit) {
                         world.destroyBody(ball);
                         ((UserData) ball.getUserData()).isDrawing = false;
-                        runOnUiThread(() -> {
-                            view.gameOver();
-                            if (button.getVisibility() != View.VISIBLE)
-                                button.setVisibility(View.VISIBLE);
-                            button.setText(view.isIs1P() ? "2P WIN!" : "1P WIN!");
-                            button.setOnClickListener(v -> {
-                                view.gamePrepare();
-                                button.setText("START");
-                                button.setOnClickListener(btn -> {
-                                    view.gameStart();
-                                    button.setVisibility(View.GONE);
-                                });
-                                restartGame();
-                            });
-                        });
+                        runOnUiThread(MainActivity.this::freeMode);
                     }
                 }
             }
@@ -434,6 +444,17 @@ public class MainActivity extends AppCompatActivity {
                             break;
                     }
                 }
+            }
+
+            {
+                //debug
+//                Body body = world.getBodyList();
+//                for (int i = 0; i < world.getBodyCount(); i++) {
+//                    p = body.getPosition();
+//                    paint.setColor(Color.GRAY);
+//                    canvas.drawCircle(p.x * rate, p.y * rate, 10, paint);
+//                    body = body.getNext();
+//                }
             }
 
             if (isMoving) {

@@ -30,6 +30,7 @@ public class InterfaceView extends View {
 
     private enum MODE {
         START,
+        FREE,
         NORMAL,
         AIMING,
         END
@@ -73,8 +74,12 @@ public class InterfaceView extends View {
         mode = MODE.START;
     }
 
-    public boolean isGaming(){
-        return mode == MODE.NORMAL;
+    public void gameFreeMode() {
+        mode = MODE.FREE;
+    }
+
+    public boolean isGaming() {
+        return mode == MODE.NORMAL || mode == MODE.FREE;
     }
 
     public void setIs1P(boolean is1P) {
@@ -106,6 +111,18 @@ public class InterfaceView extends View {
             }
         } else if (mode == MODE.END) {
 
+        } else if (mode == MODE.FREE) {
+            float x = (event.getX() - (getWidth() >> 1)) / rate;
+            float y = (event.getY() - (getHeight() >> 1)) / rate;
+            if (x < -SnookerSize.innerRectWidth / 2 + SnookerSize.ballRadius)
+                x = -SnookerSize.innerRectWidth / 2 + SnookerSize.ballRadius;
+            else if (x > SnookerSize.innerRectWidth / 2 - SnookerSize.ballRadius)
+                x = SnookerSize.innerRectWidth / 2 - SnookerSize.ballRadius;
+            if (y < -SnookerSize.innerRectHeight / 2 + SnookerSize.ballRadius)
+                y = -SnookerSize.innerRectHeight / 2 + SnookerSize.ballRadius;
+            else if (y > SnookerSize.innerRectHeight / 2 - SnookerSize.ballRadius)
+                y = SnookerSize.innerRectHeight / 2 - SnookerSize.ballRadius;
+            ball.setTransform(new Vec2(x, y), 0);
         } else if (canHitBall) {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -120,11 +137,11 @@ public class InterfaceView extends View {
                 case MotionEvent.ACTION_UP:
                     if (move.length() <= 600) {
                         listNum = list.size();
-                        ((MainActivity)getContext()).HitWhiteBall(move.mul(-1f / 50f));
+                        ((MainActivity) getContext()).HitWhiteBall(move.mul(-1f / 50f));
                         canHitBall = false;
                     } else if (move.length() <= 800) {
                         listNum = list.size();
-                        ((MainActivity)getContext()).HitWhiteBall(move.mul(-12 / move.length()));
+                        ((MainActivity) getContext()).HitWhiteBall(move.mul(-12 / move.length()));
                         canHitBall = false;
                     }
                     mode = MODE.NORMAL;
