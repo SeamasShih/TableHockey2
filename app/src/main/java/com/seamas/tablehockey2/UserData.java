@@ -7,4 +7,9 @@ public class UserData {
     public UserData(int order){
         this.order = order;
     }
+
+    public void set(UserData userData){
+        isDrawing = userData.isDrawing;
+        order = userData.order;
+    }
 }

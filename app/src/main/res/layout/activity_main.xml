@@ -43,4 +43,13 @@
         app:layout_constraintRight_toRightOf="@id/view"
         app:layout_constraintTop_toTopOf="@id/view"/>
 
+    <Button
+        android:id="@+id/test"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TEST"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/view"
+        app:layout_constraintRight_toRightOf="@id/view" />
+
 </android.support.constraint.ConstraintLayout>

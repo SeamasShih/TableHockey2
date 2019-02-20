@@ -127,6 +127,13 @@ public class MainActivity extends AppCompatActivity {
         });
 
         textView = findViewById(R.id.message);
+
+        Button test = findViewById(R.id.test);
+        test.setOnClickListener(v -> {
+            Body body = ball;
+            Vec2 p = body.getPosition();
+            body.applyForceToCenter(new Vec2(-p.x - SnookerSize.innerRectWidth / 2, -p.y + SnookerSize.innerRectHeight / 2));
+        });
     }
 
     @Override
@@ -144,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void HitWhiteBall(Vec2 force) {
+        defineMinBall();
         saveGameStatus();
         ball.applyForceToCenter(force);
         firstTouch = true;
@@ -151,13 +159,25 @@ public class MainActivity extends AppCompatActivity {
 
     private void restartGame() {
         InitialBallSites initialBallSites = new InitialBallSites(rate);
-        for (int i = 0; i < balls.length; i++) {
-            world.destroyBody(balls[i]);
-            createColorBall(i, initialBallSites.x[i], initialBallSites.y[i], SnookerSize.ballRadius * rate);
+        for (Body ball1 : balls) {
+            ball1.setActive(false);
         }
-        world.destroyBody(ball);
-        createWhiteBall(0, tableHeight / 4, SnookerSize.ballRadius * rate);
+        ball.setActive(false);
+        for (int i = 0; i < balls.length; i++) {
+            balls[i].setLinearVelocity(new Vec2());
+            balls[i].setTransform(new Vec2(initialBallSites.x[i] / rate, initialBallSites.y[i] / rate), 0);
+            balls[i].setUserData(new UserData(i));
+        }
+        ball.setLinearVelocity(new Vec2());
+        ball.setTransform(new Vec2(0, tableHeight / 4 / rate), 0);
+        ball.setUserData(new UserData(-1));
+        for (Body ball1 : balls) {
+            ball1.setActive(true);
+        }
+        ball.setActive(true);
+
         fellBalls.clear();
+        minBall = 0;
         view.setWhiteBall(ball);
         view.invalidate();
         isLegalHit = true;
@@ -166,23 +186,36 @@ public class MainActivity extends AppCompatActivity {
     private void saveGameStatus() {
         for (int i = 0; i < balls.length; i++) {
             recoverStatus.positions[i].set(balls[i].getPosition());
-            recoverStatus.userData[i] = ((UserData) balls[i].getUserData());
+            recoverStatus.userData[i].set((UserData) balls[i].getUserData());
         }
         recoverStatus.whitePosition.set(ball.getPosition());
-        recoverStatus.whiteUserData = ((UserData) ball.getUserData());
+        recoverStatus.whiteUserData.set((UserData) ball.getUserData());
         recoverStatus.balls.clear();
         recoverStatus.balls.addAll(fellBalls);
     }
 
     private void recoverGame() {
-        for (int i = 0; i < balls.length; i++) {
-            world.destroyBody(balls[i]);
-            createColorBall(i, recoverStatus.positions[i].x, recoverStatus.positions[i].y, SnookerSize.ballRadius * rate);
-            balls[i].setUserData(recoverStatus.userData[i]);
+        for (Body ball1 : balls) {
+            ball1.setActive(false);
         }
-        world.destroyBody(ball);
-        createWhiteBall(recoverStatus.whitePosition.x, recoverStatus.whitePosition.y, SnookerSize.ballRadius * rate);
-        ball.setUserData(recoverStatus.whiteUserData);
+        ball.setActive(false);
+        for (int i = 0; i < balls.length; i++) {
+            balls[i].setLinearVelocity(new Vec2());
+            balls[i].setTransform(recoverStatus.positions[i], 0);
+            UserData userData = new UserData(0);
+            userData.set(recoverStatus.userData[i]);
+            balls[i].setUserData(userData);
+        }
+        ball.setLinearVelocity(new Vec2());
+        ball.setTransform(recoverStatus.whitePosition, 0);
+        UserData userData = new UserData(0);
+        userData.set(recoverStatus.whiteUserData);
+        ball.setUserData(userData);
+        for (Body ball1 : balls) {
+            ball1.setActive(((UserData) ball1.getUserData()).isDrawing);
+        }
+        ball.setActive(((UserData) ball.getUserData()).isDrawing);
+
         view.setWhiteBall(ball);
         fellBalls.clear();
         fellBalls.addAll(recoverStatus.balls);
@@ -397,7 +430,7 @@ public class MainActivity extends AppCompatActivity {
                     paint.setColor(Color.BLACK);
                     canvas.drawText(String.valueOf(i + 1), p.x * rate, p.y * rate + adjY, paint);
                     if ((isInCornerPocket(p) || isInSidePocket(p)) && isLegalHit) {
-                        world.destroyBody(balls[i]);
+                        balls[i].setActive(false);
                         ((UserData) balls[i].getUserData()).isDrawing = false;
                         fellBalls.add(i);
                         if (i == 8) {
@@ -417,7 +450,6 @@ public class MainActivity extends AppCompatActivity {
                                 });
                             });
                         }
-                        defineMinBall();
                         view.invalidate();
                     }
                 }
@@ -428,7 +460,7 @@ public class MainActivity extends AppCompatActivity {
                     if (ball.getLinearVelocity().length() > 0.000001)
                         isMoving = true;
                     if ((isInCornerPocket(p) || isInSidePocket(p)) && isLegalHit) {
-                        world.destroyBody(ball);
+                        ball.setActive(false);
                         ((UserData) ball.getUserData()).isDrawing = false;
                         runOnUiThread(MainActivity.this::freeMode);
                     }
@@ -457,13 +489,13 @@ public class MainActivity extends AppCompatActivity {
 
             {
                 //debug
-                Body body = world.getBodyList();
-                for (int i = 0; i < world.getBodyCount(); i++) {
-                    p = body.getPosition();
-                    paint.setColor(Color.GRAY);
-                    canvas.drawCircle(p.x * rate, p.y * rate, 10, paint);
-                    body = body.getNext();
-                }
+//                Body body = world.getBodyList();
+//                for (int i = 0; i < world.getBodyCount(); i++) {
+//                    p = body.getPosition();
+//                    paint.setColor(Color.GRAY);
+//                    canvas.drawCircle(p.x * rate, p.y * rate, 10, paint);
+//                    body = body.getNext();
+//                }
             }
 
             if (isMoving) {

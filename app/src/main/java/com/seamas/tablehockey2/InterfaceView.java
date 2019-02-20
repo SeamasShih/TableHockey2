@@ -3,7 +3,9 @@ package com.seamas.tablehockey2;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Paint;
+import android.graphics.PathEffect;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -27,6 +29,7 @@ public class InterfaceView extends View {
     private float rate;
     private boolean is1P = true;
     private int listNum = 0;
+    private DashPathEffect pathEffect = new DashPathEffect(new float[]{10, 15}, 0);
 
     private enum MODE {
         START,
@@ -42,6 +45,7 @@ public class InterfaceView extends View {
         super(context, attrs);
         paint.setAntiAlias(true);
         paint.setTextAlign(Paint.Align.CENTER);
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null);
     }
 
     public void setLayerHeight(float layerHeight) {
@@ -208,6 +212,9 @@ public class InterfaceView extends View {
                     canvas.drawCircle(p.x * rate, p.y * rate, ballRadius + move.length() / 5, paint);
                     paint.setColor(is1P ? Color.YELLOW : Color.BLUE);
                     canvas.drawLine(p.x * rate + move.mul(ballRadius / move.length() + 0.2f).x, p.y * rate + move.mul(ballRadius / move.length() + 0.2f).y, p.x * rate + move.mul(ballRadius / move.length()).x, p.y * rate + move.mul(ballRadius / move.length()).y, paint);
+                    paint.setPathEffect(pathEffect);
+                    canvas.drawLine(p.x * rate + move.mul(-getHeight() / move.length()).x, p.y * rate + move.mul(-getHeight() / move.length()).y, p.x * rate + move.mul(-ballRadius / move.length()).x, p.y * rate + move.mul(-ballRadius / move.length()).y, paint);
+                    paint.setPathEffect(null);
                     paint.setStyle(Paint.Style.FILL);
                 } else if (move.length() <= 800) {
                     paint.setStyle(Paint.Style.STROKE);
@@ -216,6 +223,9 @@ public class InterfaceView extends View {
                     canvas.drawCircle(p.x * rate, p.y * rate, ballRadius + 120, paint);
                     paint.setColor(is1P ? Color.YELLOW : Color.BLUE);
                     canvas.drawLine(p.x * rate + move.mul((ballRadius + 120) / move.length()).x, p.y * rate + move.mul((ballRadius + 120) / move.length()).y, p.x * rate + move.mul(ballRadius / move.length()).x, p.y * rate + move.mul(ballRadius / move.length()).y, paint);
+                    paint.setPathEffect(pathEffect);
+                    canvas.drawLine(p.x * rate + move.mul(-getHeight() / move.length()).x, p.y * rate + move.mul(-getHeight() / move.length()).y, p.x * rate + move.mul(-ballRadius / move.length()).x, p.y * rate + move.mul(-ballRadius / move.length()).y, paint);
+                    paint.setPathEffect(null);
                     paint.setStyle(Paint.Style.FILL);
                 } else {
                     paint.setStyle(Paint.Style.STROKE);
