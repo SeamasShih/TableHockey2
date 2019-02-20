@@ -4,9 +4,9 @@ public class InitialBallSites {
     public float[] x = new float[9], y = new float[9];
 
     public InitialBallSites(float rate) {
-        float r = HockeyTableSize.ballRadius * 2 * rate;
+        float r = BilliardSize.ballRadius * 2 * rate;
         float cx = 0;
-        float cy = -HockeyTableSize.innerRectHeight / 4 * rate;
+        float cy = -BilliardSize.innerRectHeight / 4 * rate;
         x[0] = cx;
         y[0] = cy + r * (float) Math.sqrt(3);
 

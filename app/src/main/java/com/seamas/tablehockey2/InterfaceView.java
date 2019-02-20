@@ -71,14 +71,14 @@ public class InterfaceView extends View {
                 case MotionEvent.ACTION_MOVE:
                     float x = (event.getX() - (getWidth() >> 1)) / rate;
                     float y = (event.getY() - (getHeight() >> 1)) / rate;
-                    if (x < -HockeyTableSize.innerRectWidth / 2 + HockeyTableSize.ballRadius)
-                        x = -HockeyTableSize.innerRectWidth / 2 + HockeyTableSize.ballRadius;
-                    else if (x > HockeyTableSize.innerRectWidth / 2 - HockeyTableSize.ballRadius)
-                        x = HockeyTableSize.innerRectWidth / 2 - HockeyTableSize.ballRadius;
-                    if (y < HockeyTableSize.innerRectHeight / 4 + HockeyTableSize.ballRadius)
-                        y = HockeyTableSize.innerRectHeight / 4 + HockeyTableSize.ballRadius;
-                    else if (y > HockeyTableSize.innerRectHeight / 2 - HockeyTableSize.ballRadius)
-                        y = HockeyTableSize.innerRectHeight / 2 - HockeyTableSize.ballRadius;
+                    if (x < -BilliardSize.innerRectWidth / 2 + BilliardSize.ballRadius)
+                        x = -BilliardSize.innerRectWidth / 2 + BilliardSize.ballRadius;
+                    else if (x > BilliardSize.innerRectWidth / 2 - BilliardSize.ballRadius)
+                        x = BilliardSize.innerRectWidth / 2 - BilliardSize.ballRadius;
+                    if (y < BilliardSize.innerRectHeight / 4 + BilliardSize.ballRadius)
+                        y = BilliardSize.innerRectHeight / 4 + BilliardSize.ballRadius;
+                    else if (y > BilliardSize.innerRectHeight / 2 - BilliardSize.ballRadius)
+                        y = BilliardSize.innerRectHeight / 2 - BilliardSize.ballRadius;
                     ball.setTransform(new Vec2(x, y), 0);
                     break;
             }

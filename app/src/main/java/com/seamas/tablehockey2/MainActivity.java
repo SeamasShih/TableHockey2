@@ -8,8 +8,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -54,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
 
         float screenWidth = getResources().getDisplayMetrics().widthPixels - edge * 2;
         float screenHeight = getResources().getDisplayMetrics().heightPixels - edge * 2;
+        screenWidth = screenWidth * BilliardSize.innerRectWidth / (BilliardSize.innerRectWidth + BilliardSize.cornerPocketRadius * (float) Math.sqrt(2));
+        screenHeight = screenHeight * BilliardSize.innerRectHeight / (BilliardSize.innerRectHeight + BilliardSize.cornerPocketRadius * (float) Math.sqrt(2));
         if (screenWidth * 2 > screenHeight) {
             tableWidth = screenHeight / 2;
             tableHeight = screenHeight;
@@ -61,11 +61,12 @@ public class MainActivity extends AppCompatActivity {
             tableWidth = screenWidth;
             tableHeight = screenWidth * 2;
         }
-        rate = tableWidth / HockeyTableSize.innerRectWidth;
+
+        rate = tableWidth / BilliardSize.innerRectWidth;
 
         paint.setAntiAlias(true);
         paint.setTextAlign(Paint.Align.CENTER);
-        paint.setTextSize(HockeyTableSize.ballRadius * rate);
+        paint.setTextSize(BilliardSize.ballRadius * rate);
         adjY = (paint.getFontMetrics().descent - paint.getFontMetrics().ascent) / 2 - paint.getFontMetrics().descent;
 
         createWorld();
@@ -130,16 +131,16 @@ public class MainActivity extends AppCompatActivity {
     private void createObject() {
         InitialBallSites initialBallSites = new InitialBallSites(rate);
         for (int i = 0; i < balls.length; i++) {
-            createColorBall(i, initialBallSites.x[i], initialBallSites.y[i], HockeyTableSize.ballRadius * rate);
+            createColorBall(i, initialBallSites.x[i], initialBallSites.y[i], BilliardSize.ballRadius * rate);
         }
-        createBox(0, 0, -tableHeight / 2 - 5, HockeyTableSize.horizontalWallWidth * rate, 10);
-        createBox(1, tableWidth / 2 + 5, (-HockeyTableSize.verticalWallHeight / 2 - HockeyTableSize.sidePocketRadius) * rate, 10, (HockeyTableSize.verticalWallHeight) * rate);
-        createBox(2, tableWidth / 2 + 5, (HockeyTableSize.verticalWallHeight / 2 + HockeyTableSize.sidePocketRadius) * rate, 10, (HockeyTableSize.verticalWallHeight) * rate);
-        createBox(3, 0, tableHeight / 2 + 5, HockeyTableSize.horizontalWallWidth * rate, 10);
-        createBox(4, -tableWidth / 2 - 5, (HockeyTableSize.verticalWallHeight / 2 + HockeyTableSize.sidePocketRadius) * rate, 10, (HockeyTableSize.verticalWallHeight) * rate);
-        createBox(5, -tableWidth / 2 - 5, (-HockeyTableSize.verticalWallHeight / 2 - HockeyTableSize.sidePocketRadius) * rate, 10, (HockeyTableSize.verticalWallHeight) * rate);
+        createBox(0, 0, -tableHeight / 2 - 5, BilliardSize.horizontalWallWidth * rate, 10);
+        createBox(1, tableWidth / 2 + 5, (-BilliardSize.verticalWallHeight / 2 - BilliardSize.sidePocketRadius) * rate, 10, (BilliardSize.verticalWallHeight) * rate);
+        createBox(2, tableWidth / 2 + 5, (BilliardSize.verticalWallHeight / 2 + BilliardSize.sidePocketRadius) * rate, 10, (BilliardSize.verticalWallHeight) * rate);
+        createBox(3, 0, tableHeight / 2 + 5, BilliardSize.horizontalWallWidth * rate, 10);
+        createBox(4, -tableWidth / 2 - 5, (BilliardSize.verticalWallHeight / 2 + BilliardSize.sidePocketRadius) * rate, 10, (BilliardSize.verticalWallHeight) * rate);
+        createBox(5, -tableWidth / 2 - 5, (-BilliardSize.verticalWallHeight / 2 - BilliardSize.sidePocketRadius) * rate, 10, (BilliardSize.verticalWallHeight) * rate);
 
-        createWhiteBall(0, tableHeight / 4, HockeyTableSize.ballRadius * rate);
+        createWhiteBall(0, tableHeight / 4, BilliardSize.ballRadius * rate);
     }
 
     private void createBox(int i, float x, float y, float w, float h) {
@@ -201,21 +202,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isInCornerPocket(Vec2 ball) {
-        Vec2 v = new Vec2(ball.x - HockeyTableSize.innerRectWidth / 2, ball.y - HockeyTableSize.innerRectHeight / 2);
-        if (v.length() < HockeyTableSize.cornerPocketRadius)
+        Vec2 v = new Vec2(ball.x - BilliardSize.innerRectWidth / 2, ball.y - BilliardSize.innerRectHeight / 2);
+        if (v.length() < BilliardSize.cornerPocketRadius)
             return true;
-        v.set(ball.x - HockeyTableSize.innerRectWidth / 2, ball.y + HockeyTableSize.innerRectHeight / 2);
-        if (v.length() < HockeyTableSize.cornerPocketRadius)
+        v.set(ball.x - BilliardSize.innerRectWidth / 2, ball.y + BilliardSize.innerRectHeight / 2);
+        if (v.length() < BilliardSize.cornerPocketRadius)
             return true;
-        v.set(ball.x + HockeyTableSize.innerRectWidth / 2, ball.y - HockeyTableSize.innerRectHeight / 2);
-        if (v.length() < HockeyTableSize.cornerPocketRadius)
+        v.set(ball.x + BilliardSize.innerRectWidth / 2, ball.y - BilliardSize.innerRectHeight / 2);
+        if (v.length() < BilliardSize.cornerPocketRadius)
             return true;
-        v.set(ball.x + HockeyTableSize.innerRectWidth / 2, ball.y + HockeyTableSize.innerRectHeight / 2);
-        return v.length() < HockeyTableSize.cornerPocketRadius;
+        v.set(ball.x + BilliardSize.innerRectWidth / 2, ball.y + BilliardSize.innerRectHeight / 2);
+        return v.length() < BilliardSize.cornerPocketRadius;
     }
 
     private boolean isInSidePocket(Vec2 ball) {
-        return ball.x < -HockeyTableSize.innerRectWidth / 2 || ball.x > HockeyTableSize.innerRectWidth / 2;
+        return ball.x < -BilliardSize.innerRectWidth / 2 || ball.x > BilliardSize.innerRectWidth / 2;
     }
 
     private class Process implements CanvasUpdateProcess {
@@ -231,7 +232,7 @@ public class MainActivity extends AppCompatActivity {
 
                 canvas.translate(canvas.getWidth() >> 1, canvas.getHeight() >> 1);
                 paint.setColor(getResources().getColor(R.color.colorTableHockeyWood));
-                float ballRadius = HockeyTableSize.cornerPocketRadius * rate;
+                float ballRadius = BilliardSize.cornerPocketRadius * rate;
                 canvas.drawRoundRect(-tableWidth / 2 - ballRadius, -tableHeight / 2 - ballRadius, tableWidth / 2 + ballRadius, tableHeight / 2 + ballRadius, ballRadius, ballRadius, paint);
                 paint.setColor(getResources().getColor(R.color.colorTableHockeyFabric));
                 canvas.drawRect(-tableWidth / 2, -tableHeight / 2, tableWidth / 2, tableHeight / 2, paint);
@@ -243,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
                 canvas.drawCircle(+tableWidth / 2, -tableHeight / 2, ballRadius, paint);
                 canvas.drawCircle(+tableWidth / 2, +tableHeight / 2, ballRadius, paint);
 
-                ballRadius = HockeyTableSize.sidePocketRadius * rate;
+                ballRadius = BilliardSize.sidePocketRadius * rate;
                 canvas.drawArc(-tableWidth / 2 - ballRadius, -ballRadius, -tableWidth / 2 + ballRadius, ballRadius, 90, 180, true, paint);
                 canvas.drawArc(tableWidth / 2 - ballRadius, -ballRadius, tableWidth / 2 + ballRadius, ballRadius, -90, 180, true, paint);
             }
@@ -258,12 +259,12 @@ public class MainActivity extends AppCompatActivity {
                         isMoving = true;
                     p = balls[i].getPosition();
                     paint.setColor(colors[i]);
-                    canvas.drawCircle(p.x * rate, p.y * rate, HockeyTableSize.ballRadius * rate, paint);
+                    canvas.drawCircle(p.x * rate, p.y * rate, BilliardSize.ballRadius * rate, paint);
                     paint.setColor(Color.WHITE);
-                    canvas.drawCircle(p.x * rate, p.y * rate, HockeyTableSize.ballRadius * rate / 2, paint);
+                    canvas.drawCircle(p.x * rate, p.y * rate, BilliardSize.ballRadius * rate / 2, paint);
                     if (i > 7) {
-                        canvas.drawArc(p.x * rate - HockeyTableSize.ballRadius * rate, p.y * rate - HockeyTableSize.ballRadius * rate, p.x * rate + HockeyTableSize.ballRadius * rate, p.y * rate + HockeyTableSize.ballRadius * rate, -50, 100, false, paint);
-                        canvas.drawArc(p.x * rate - HockeyTableSize.ballRadius * rate, p.y * rate - HockeyTableSize.ballRadius * rate, p.x * rate + HockeyTableSize.ballRadius * rate, p.y * rate + HockeyTableSize.ballRadius * rate, 130, 100, false, paint);
+                        canvas.drawArc(p.x * rate - BilliardSize.ballRadius * rate, p.y * rate - BilliardSize.ballRadius * rate, p.x * rate + BilliardSize.ballRadius * rate, p.y * rate + BilliardSize.ballRadius * rate, -50, 100, false, paint);
+                        canvas.drawArc(p.x * rate - BilliardSize.ballRadius * rate, p.y * rate - BilliardSize.ballRadius * rate, p.x * rate + BilliardSize.ballRadius * rate, p.y * rate + BilliardSize.ballRadius * rate, 130, 100, false, paint);
                     }
                     paint.setColor(Color.BLACK);
                     canvas.drawText(String.valueOf(i + 1), p.x * rate, p.y * rate + adjY, paint);
@@ -276,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 p = ball.getPosition();
                 paint.setColor(Color.WHITE);
-                canvas.drawCircle(p.x * rate, p.y * rate, HockeyTableSize.ballRadius * rate, paint);
+                canvas.drawCircle(p.x * rate, p.y * rate, BilliardSize.ballRadius * rate, paint);
                 if (ball.getLinearVelocity().length() > 0.000001)
                     isMoving = true;
                 if (isInCornerPocket(p) || isInSidePocket(p)) {
@@ -292,13 +293,13 @@ public class MainActivity extends AppCompatActivity {
                     switch (i) {
                         case 0:
                         case 3:
-                            canvas.drawRect(-(p.x + HockeyTableSize.horizontalWallWidth / 2) * rate, p.y * rate - 5, (p.x + HockeyTableSize.horizontalWallWidth / 2) * rate, p.y * rate + 5, paint);
+                            canvas.drawRect(-(p.x + BilliardSize.horizontalWallWidth / 2) * rate, p.y * rate - 5, (p.x + BilliardSize.horizontalWallWidth / 2) * rate, p.y * rate + 5, paint);
                             break;
                         case 1:
                         case 2:
                         case 4:
                         case 5:
-                            canvas.drawRect(p.x * rate - 5, (p.y - HockeyTableSize.verticalWallHeight / 2) * rate, p.x * rate + 5, (p.y + HockeyTableSize.verticalWallHeight / 2) * rate, paint);
+                            canvas.drawRect(p.x * rate - 5, (p.y - BilliardSize.verticalWallHeight / 2) * rate, p.x * rate + 5, (p.y + BilliardSize.verticalWallHeight / 2) * rate, paint);
                             break;
                     }
                 }
