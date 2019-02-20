@@ -4,9 +4,9 @@ public class InitialBallSites {
     public float[] x = new float[9], y = new float[9];
 
     public InitialBallSites(float rate) {
-        float r = BilliardSize.ballRadius * 2 * rate;
+        float r = SnookerSize.ballRadius * 2 * rate;
         float cx = 0;
-        float cy = -BilliardSize.innerRectHeight / 4 * rate;
+        float cy = -SnookerSize.innerRectHeight / 4 * rate;
         x[0] = cx;
         y[0] = cy + r * (float) Math.sqrt(3);
 
@@ -33,5 +33,22 @@ public class InitialBallSites {
 
         x[8] = cx;
         y[8] = cy;
+
+        for (int i = 0; i < 30; i++) {
+            int k = (int) (Math.random() * 9);
+            int j = (int) (Math.random() * 9);
+            if (k == 0 || j == 0 || k == 8 || j == 8)
+                continue;
+            randomBall(k, j);
+        }
+    }
+
+    private void randomBall(int k, int j) {
+        float temp = x[k];
+        x[k] = x[j];
+        x[j] = temp;
+        temp = y[k];
+        y[k] = y[j];
+        y[j] = temp;
     }
 }

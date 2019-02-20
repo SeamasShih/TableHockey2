@@ -8,10 +8,14 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 
+import com.seamas.tablehockey2.jbox2d.callbacks.ContactImpulse;
+import com.seamas.tablehockey2.jbox2d.callbacks.ContactListener;
+import com.seamas.tablehockey2.jbox2d.collision.Manifold;
 import com.seamas.tablehockey2.jbox2d.collision.shapes.CircleShape;
 import com.seamas.tablehockey2.jbox2d.collision.shapes.PolygonShape;
 import com.seamas.tablehockey2.jbox2d.common.Vec2;
@@ -20,6 +24,7 @@ import com.seamas.tablehockey2.jbox2d.dynamics.BodyDef;
 import com.seamas.tablehockey2.jbox2d.dynamics.BodyType;
 import com.seamas.tablehockey2.jbox2d.dynamics.FixtureDef;
 import com.seamas.tablehockey2.jbox2d.dynamics.World;
+import com.seamas.tablehockey2.jbox2d.dynamics.contacts.Contact;
 
 import java.util.ArrayList;
 
@@ -30,6 +35,8 @@ public class MainActivity extends AppCompatActivity {
 
     private float rate;
     private World world;
+    private boolean firstTouch = true;
+    private RecoverStatus recoverStatus = new RecoverStatus();
 
     private float tableWidth;
     private float tableHeight;
@@ -42,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
     private InterfaceView view;
     private ValueAnimator animator = ValueAnimator.ofInt(0, 100);
+    private Button button;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,8 +60,8 @@ public class MainActivity extends AppCompatActivity {
 
         float screenWidth = getResources().getDisplayMetrics().widthPixels - edge * 2;
         float screenHeight = getResources().getDisplayMetrics().heightPixels - edge * 2;
-        screenWidth = screenWidth * BilliardSize.innerRectWidth / (BilliardSize.innerRectWidth + BilliardSize.cornerPocketRadius * (float) Math.sqrt(2));
-        screenHeight = screenHeight * BilliardSize.innerRectHeight / (BilliardSize.innerRectHeight + BilliardSize.cornerPocketRadius * (float) Math.sqrt(2));
+        screenWidth = screenWidth * SnookerSize.innerRectWidth / (SnookerSize.innerRectWidth + SnookerSize.cornerPocketRadius * (float) Math.sqrt(2));
+        screenHeight = screenHeight * SnookerSize.innerRectHeight / (SnookerSize.innerRectHeight + SnookerSize.cornerPocketRadius * (float) Math.sqrt(2));
         if (screenWidth * 2 > screenHeight) {
             tableWidth = screenHeight / 2;
             tableHeight = screenHeight;
@@ -62,11 +70,11 @@ public class MainActivity extends AppCompatActivity {
             tableHeight = screenWidth * 2;
         }
 
-        rate = tableWidth / BilliardSize.innerRectWidth;
+        rate = tableWidth / SnookerSize.innerRectWidth;
 
         paint.setAntiAlias(true);
         paint.setTextAlign(Paint.Align.CENTER);
-        paint.setTextSize(BilliardSize.ballRadius * rate);
+        paint.setTextSize(SnookerSize.ballRadius * rate);
         adjY = (paint.getFontMetrics().descent - paint.getFontMetrics().ascent) / 2 - paint.getFontMetrics().descent;
 
         createWorld();
@@ -85,10 +93,12 @@ public class MainActivity extends AppCompatActivity {
         animator.setDuration(1500);
         animator.addListener(new AnimatorListenerAdapter() {
             boolean isCancel = false;
+            boolean isStart = false;
 
             @Override
             public void onAnimationStart(Animator animation) {
                 isCancel = false;
+                isStart = true;
             }
 
             @Override
@@ -98,14 +108,16 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onAnimationEnd(Animator animation) {
-                if (!isCancel)
+                if (!isCancel && isStart)
                     view.setCanHitBall(true);
+                isStart = false;
+                firstTouch = true;
             }
         });
 
-        Button button = findViewById(R.id.btn);
+        button = findViewById(R.id.btn);
         button.setOnClickListener(v -> {
-            view.startGame();
+            view.gameStart();
             v.setVisibility(View.GONE);
         });
     }
@@ -124,23 +136,107 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void HitWhiteBall(Vec2 force) {
+        saveGameStatus();
+        ball.applyForceToCenter(force);
+        firstTouch = true;
+    }
+
+    private void restartGame() {
+        InitialBallSites initialBallSites = new InitialBallSites(rate);
+        for (int i = 0; i < balls.length; i++) {
+            createColorBall(i, initialBallSites.x[i], initialBallSites.y[i], SnookerSize.ballRadius * rate);
+        }
+        createWhiteBall(0, tableHeight / 4, SnookerSize.ballRadius * rate);
+        fellBalls.clear();
+        view.setWhiteBall(ball);
+        view.invalidate();
+    }
+
+    private void saveGameStatus() {
+        for (int i = 0; i < balls.length; i++) {
+            recoverStatus.positions[i].set(balls[i].getPosition());
+            recoverStatus.userData[i].isDrawing = ((UserData) balls[i].getUserData()).isDrawing;
+        }
+        recoverStatus.whitePosition.set(ball.getPosition());
+        recoverStatus.whiteUserData.isDrawing = ((UserData) ball.getUserData()).isDrawing;
+    }
+
+    private void recoverGame() {
+        ball.getLinearVelocity().setZero();
+        ball.setTransform(recoverStatus.whitePosition, 0);
+        for (int i = 0; i < balls.length; i++) {
+            balls[i].getLinearVelocity().setZero();
+            balls[i].setTransform(recoverStatus.positions[i], 0);
+        }
+        for (int i = 0; i < balls.length; i++) {
+            if (recoverStatus.userData[i].isDrawing != ((UserData) balls[i].getUserData()).isDrawing) {
+                createColorBall(i, recoverStatus.positions[i].x, recoverStatus.positions[i].y, SnookerSize.ballRadius * rate);
+            }
+        }
+        if (recoverStatus.whiteUserData.isDrawing != ((UserData) ball.getUserData()).isDrawing)
+            createWhiteBall(recoverStatus.whitePosition.x, recoverStatus.whitePosition.y, SnookerSize.ballRadius * rate);
+    }
+
     private void createWorld() {
         world = new World(new Vec2(0, 0));
+        world.setContactListener(new ContactListener() {
+
+            @Override
+            public void beginContact(Contact contact) {
+                if (firstTouch && view.isGaming() && contact.m_fixtureA.getBody().getUserData() != null && contact.m_fixtureB.getBody().getUserData() != null) {
+                    int minBall = 0;
+                    for (int i = 0; i < balls.length; i++) {
+                        if ((((UserData) balls[i].getUserData()).isDrawing)) {
+                            minBall = i;
+                            break;
+                        }
+                    }
+                    if ((contact.m_fixtureA.getBody() != balls[minBall] || contact.m_fixtureB.getBody() != ball) &&
+                            (contact.m_fixtureB.getBody() != balls[minBall] || contact.m_fixtureA.getBody() != ball)) {
+                        runOnUiThread(() -> {
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            recoverGame();
+                        });
+                    }
+                    firstTouch = false;
+                }
+            }
+
+            @Override
+            public void endContact(Contact contact) {
+
+            }
+
+            @Override
+            public void preSolve(Contact contact, Manifold oldManifold) {
+
+            }
+
+            @Override
+            public void postSolve(Contact contact, ContactImpulse impulse) {
+
+            }
+        });
     }
 
     private void createObject() {
         InitialBallSites initialBallSites = new InitialBallSites(rate);
         for (int i = 0; i < balls.length; i++) {
-            createColorBall(i, initialBallSites.x[i], initialBallSites.y[i], BilliardSize.ballRadius * rate);
+            createColorBall(i, initialBallSites.x[i], initialBallSites.y[i], SnookerSize.ballRadius * rate);
         }
-        createBox(0, 0, -tableHeight / 2 - 5, BilliardSize.horizontalWallWidth * rate, 10);
-        createBox(1, tableWidth / 2 + 5, (-BilliardSize.verticalWallHeight / 2 - BilliardSize.sidePocketRadius) * rate, 10, (BilliardSize.verticalWallHeight) * rate);
-        createBox(2, tableWidth / 2 + 5, (BilliardSize.verticalWallHeight / 2 + BilliardSize.sidePocketRadius) * rate, 10, (BilliardSize.verticalWallHeight) * rate);
-        createBox(3, 0, tableHeight / 2 + 5, BilliardSize.horizontalWallWidth * rate, 10);
-        createBox(4, -tableWidth / 2 - 5, (BilliardSize.verticalWallHeight / 2 + BilliardSize.sidePocketRadius) * rate, 10, (BilliardSize.verticalWallHeight) * rate);
-        createBox(5, -tableWidth / 2 - 5, (-BilliardSize.verticalWallHeight / 2 - BilliardSize.sidePocketRadius) * rate, 10, (BilliardSize.verticalWallHeight) * rate);
+        createBox(0, 0, -tableHeight / 2 - 5, SnookerSize.horizontalWallWidth * rate, 10);
+        createBox(1, tableWidth / 2 + 5, (-SnookerSize.verticalWallHeight / 2 - SnookerSize.sidePocketRadius) * rate, 10, (SnookerSize.verticalWallHeight) * rate);
+        createBox(2, tableWidth / 2 + 5, (SnookerSize.verticalWallHeight / 2 + SnookerSize.sidePocketRadius) * rate, 10, (SnookerSize.verticalWallHeight) * rate);
+        createBox(3, 0, tableHeight / 2 + 5, SnookerSize.horizontalWallWidth * rate, 10);
+        createBox(4, -tableWidth / 2 - 5, (SnookerSize.verticalWallHeight / 2 + SnookerSize.sidePocketRadius) * rate, 10, (SnookerSize.verticalWallHeight) * rate);
+        createBox(5, -tableWidth / 2 - 5, (-SnookerSize.verticalWallHeight / 2 - SnookerSize.sidePocketRadius) * rate, 10, (SnookerSize.verticalWallHeight) * rate);
 
-        createWhiteBall(0, tableHeight / 4, BilliardSize.ballRadius * rate);
+        createWhiteBall(0, tableHeight / 4, SnookerSize.ballRadius * rate);
     }
 
     private void createBox(int i, float x, float y, float w, float h) {
@@ -202,21 +298,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isInCornerPocket(Vec2 ball) {
-        Vec2 v = new Vec2(ball.x - BilliardSize.innerRectWidth / 2, ball.y - BilliardSize.innerRectHeight / 2);
-        if (v.length() < BilliardSize.cornerPocketRadius)
+        Vec2 v = new Vec2(ball.x - SnookerSize.innerRectWidth / 2, ball.y - SnookerSize.innerRectHeight / 2);
+        if (v.length() < SnookerSize.cornerPocketRadius)
             return true;
-        v.set(ball.x - BilliardSize.innerRectWidth / 2, ball.y + BilliardSize.innerRectHeight / 2);
-        if (v.length() < BilliardSize.cornerPocketRadius)
+        v.set(ball.x - SnookerSize.innerRectWidth / 2, ball.y + SnookerSize.innerRectHeight / 2);
+        if (v.length() < SnookerSize.cornerPocketRadius)
             return true;
-        v.set(ball.x + BilliardSize.innerRectWidth / 2, ball.y - BilliardSize.innerRectHeight / 2);
-        if (v.length() < BilliardSize.cornerPocketRadius)
+        v.set(ball.x + SnookerSize.innerRectWidth / 2, ball.y - SnookerSize.innerRectHeight / 2);
+        if (v.length() < SnookerSize.cornerPocketRadius)
             return true;
-        v.set(ball.x + BilliardSize.innerRectWidth / 2, ball.y + BilliardSize.innerRectHeight / 2);
-        return v.length() < BilliardSize.cornerPocketRadius;
+        v.set(ball.x + SnookerSize.innerRectWidth / 2, ball.y + SnookerSize.innerRectHeight / 2);
+        return v.length() < SnookerSize.cornerPocketRadius;
     }
 
     private boolean isInSidePocket(Vec2 ball) {
-        return ball.x < -BilliardSize.innerRectWidth / 2 || ball.x > BilliardSize.innerRectWidth / 2;
+        return ball.x < -SnookerSize.innerRectWidth / 2 || ball.x > SnookerSize.innerRectWidth / 2;
     }
 
     private class Process implements CanvasUpdateProcess {
@@ -232,7 +328,7 @@ public class MainActivity extends AppCompatActivity {
 
                 canvas.translate(canvas.getWidth() >> 1, canvas.getHeight() >> 1);
                 paint.setColor(getResources().getColor(R.color.colorTableHockeyWood));
-                float ballRadius = BilliardSize.cornerPocketRadius * rate;
+                float ballRadius = SnookerSize.cornerPocketRadius * rate;
                 canvas.drawRoundRect(-tableWidth / 2 - ballRadius, -tableHeight / 2 - ballRadius, tableWidth / 2 + ballRadius, tableHeight / 2 + ballRadius, ballRadius, ballRadius, paint);
                 paint.setColor(getResources().getColor(R.color.colorTableHockeyFabric));
                 canvas.drawRect(-tableWidth / 2, -tableHeight / 2, tableWidth / 2, tableHeight / 2, paint);
@@ -244,7 +340,7 @@ public class MainActivity extends AppCompatActivity {
                 canvas.drawCircle(+tableWidth / 2, -tableHeight / 2, ballRadius, paint);
                 canvas.drawCircle(+tableWidth / 2, +tableHeight / 2, ballRadius, paint);
 
-                ballRadius = BilliardSize.sidePocketRadius * rate;
+                ballRadius = SnookerSize.sidePocketRadius * rate;
                 canvas.drawArc(-tableWidth / 2 - ballRadius, -ballRadius, -tableWidth / 2 + ballRadius, ballRadius, 90, 180, true, paint);
                 canvas.drawArc(tableWidth / 2 - ballRadius, -ballRadius, tableWidth / 2 + ballRadius, ballRadius, -90, 180, true, paint);
             }
@@ -259,12 +355,12 @@ public class MainActivity extends AppCompatActivity {
                         isMoving = true;
                     p = balls[i].getPosition();
                     paint.setColor(colors[i]);
-                    canvas.drawCircle(p.x * rate, p.y * rate, BilliardSize.ballRadius * rate, paint);
+                    canvas.drawCircle(p.x * rate, p.y * rate, SnookerSize.ballRadius * rate, paint);
                     paint.setColor(Color.WHITE);
-                    canvas.drawCircle(p.x * rate, p.y * rate, BilliardSize.ballRadius * rate / 2, paint);
+                    canvas.drawCircle(p.x * rate, p.y * rate, SnookerSize.ballRadius * rate / 2, paint);
                     if (i > 7) {
-                        canvas.drawArc(p.x * rate - BilliardSize.ballRadius * rate, p.y * rate - BilliardSize.ballRadius * rate, p.x * rate + BilliardSize.ballRadius * rate, p.y * rate + BilliardSize.ballRadius * rate, -50, 100, false, paint);
-                        canvas.drawArc(p.x * rate - BilliardSize.ballRadius * rate, p.y * rate - BilliardSize.ballRadius * rate, p.x * rate + BilliardSize.ballRadius * rate, p.y * rate + BilliardSize.ballRadius * rate, 130, 100, false, paint);
+                        canvas.drawArc(p.x * rate - SnookerSize.ballRadius * rate, p.y * rate - SnookerSize.ballRadius * rate, p.x * rate + SnookerSize.ballRadius * rate, p.y * rate + SnookerSize.ballRadius * rate, -50, 100, false, paint);
+                        canvas.drawArc(p.x * rate - SnookerSize.ballRadius * rate, p.y * rate - SnookerSize.ballRadius * rate, p.x * rate + SnookerSize.ballRadius * rate, p.y * rate + SnookerSize.ballRadius * rate, 130, 100, false, paint);
                     }
                     paint.setColor(Color.BLACK);
                     canvas.drawText(String.valueOf(i + 1), p.x * rate, p.y * rate + adjY, paint);
@@ -272,16 +368,51 @@ public class MainActivity extends AppCompatActivity {
                         world.destroyBody(balls[i]);
                         ((UserData) balls[i].getUserData()).isDrawing = false;
                         fellBalls.add(i);
+                        if (i == 8) {
+                            runOnUiThread(() -> {
+                                view.gameOver();
+                                if (button.getVisibility() != View.VISIBLE)
+                                    button.setVisibility(View.VISIBLE);
+                                button.setText(view.isIs1P() ? "1P WIN!" : "2P WIN!");
+                                button.setOnClickListener(v -> {
+                                    view.gamePrepare();
+                                    button.setText("START");
+                                    button.setOnClickListener(btn -> {
+                                        view.gameStart();
+                                        button.setVisibility(View.GONE);
+                                    });
+                                    restartGame();
+                                });
+                            });
+                        }
                         view.invalidate();
                     }
                 }
-                p = ball.getPosition();
-                paint.setColor(Color.WHITE);
-                canvas.drawCircle(p.x * rate, p.y * rate, BilliardSize.ballRadius * rate, paint);
-                if (ball.getLinearVelocity().length() > 0.000001)
-                    isMoving = true;
-                if (isInCornerPocket(p) || isInSidePocket(p)) {
-                    //todo lose
+                if (((UserData) ball.getUserData()).isDrawing) {
+                    p = ball.getPosition();
+                    paint.setColor(Color.WHITE);
+                    canvas.drawCircle(p.x * rate, p.y * rate, SnookerSize.ballRadius * rate, paint);
+                    if (ball.getLinearVelocity().length() > 0.000001)
+                        isMoving = true;
+                    if (isInCornerPocket(p) || isInSidePocket(p)) {
+                        world.destroyBody(ball);
+                        ((UserData) ball.getUserData()).isDrawing = false;
+                        runOnUiThread(() -> {
+                            view.gameOver();
+                            if (button.getVisibility() != View.VISIBLE)
+                                button.setVisibility(View.VISIBLE);
+                            button.setText(view.isIs1P() ? "2P WIN!" : "1P WIN!");
+                            button.setOnClickListener(v -> {
+                                view.gamePrepare();
+                                button.setText("START");
+                                button.setOnClickListener(btn -> {
+                                    view.gameStart();
+                                    button.setVisibility(View.GONE);
+                                });
+                                restartGame();
+                            });
+                        });
+                    }
                 }
             }
 
@@ -293,13 +424,13 @@ public class MainActivity extends AppCompatActivity {
                     switch (i) {
                         case 0:
                         case 3:
-                            canvas.drawRect(-(p.x + BilliardSize.horizontalWallWidth / 2) * rate, p.y * rate - 5, (p.x + BilliardSize.horizontalWallWidth / 2) * rate, p.y * rate + 5, paint);
+                            canvas.drawRect(-(p.x + SnookerSize.horizontalWallWidth / 2) * rate, p.y * rate - 5, (p.x + SnookerSize.horizontalWallWidth / 2) * rate, p.y * rate + 5, paint);
                             break;
                         case 1:
                         case 2:
                         case 4:
                         case 5:
-                            canvas.drawRect(p.x * rate - 5, (p.y - BilliardSize.verticalWallHeight / 2) * rate, p.x * rate + 5, (p.y + BilliardSize.verticalWallHeight / 2) * rate, paint);
+                            canvas.drawRect(p.x * rate - 5, (p.y - SnookerSize.verticalWallHeight / 2) * rate, p.x * rate + 5, (p.y + SnookerSize.verticalWallHeight / 2) * rate, paint);
                             break;
                     }
                 }
@@ -308,7 +439,7 @@ public class MainActivity extends AppCompatActivity {
             if (isMoving) {
                 if (animator.isRunning())
                     runOnUiThread(() -> animator.cancel());
-            } else if (!animator.isRunning()) {
+            } else if (!animator.isRunning() && !view.isCanHitBall()) {
                 runOnUiThread(() -> animator.cancel());
                 runOnUiThread(() -> animator.start());
             }

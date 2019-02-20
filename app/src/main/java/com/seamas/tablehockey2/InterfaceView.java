@@ -25,6 +25,8 @@ public class InterfaceView extends View {
     private Vec2 finger = new Vec2();
     private Vec2 move = new Vec2();
     private float rate;
+    private boolean is1P = true;
+    private int listNum = 0;
 
     private enum MODE {
         START,
@@ -59,8 +61,28 @@ public class InterfaceView extends View {
         invalidate();
     }
 
-    public void startGame() {
+    public void gameStart() {
         mode = MODE.NORMAL;
+    }
+
+    public void gameOver() {
+        mode = MODE.END;
+    }
+
+    public void gamePrepare() {
+        mode = MODE.START;
+    }
+
+    public boolean isGaming(){
+        return mode == MODE.NORMAL;
+    }
+
+    public void setIs1P(boolean is1P) {
+        this.is1P = is1P;
+    }
+
+    public boolean isIs1P() {
+        return is1P;
     }
 
     @Override
@@ -71,18 +93,19 @@ public class InterfaceView extends View {
                 case MotionEvent.ACTION_MOVE:
                     float x = (event.getX() - (getWidth() >> 1)) / rate;
                     float y = (event.getY() - (getHeight() >> 1)) / rate;
-                    if (x < -BilliardSize.innerRectWidth / 2 + BilliardSize.ballRadius)
-                        x = -BilliardSize.innerRectWidth / 2 + BilliardSize.ballRadius;
-                    else if (x > BilliardSize.innerRectWidth / 2 - BilliardSize.ballRadius)
-                        x = BilliardSize.innerRectWidth / 2 - BilliardSize.ballRadius;
-                    if (y < BilliardSize.innerRectHeight / 4 + BilliardSize.ballRadius)
-                        y = BilliardSize.innerRectHeight / 4 + BilliardSize.ballRadius;
-                    else if (y > BilliardSize.innerRectHeight / 2 - BilliardSize.ballRadius)
-                        y = BilliardSize.innerRectHeight / 2 - BilliardSize.ballRadius;
+                    if (x < -SnookerSize.innerRectWidth / 2 + SnookerSize.ballRadius)
+                        x = -SnookerSize.innerRectWidth / 2 + SnookerSize.ballRadius;
+                    else if (x > SnookerSize.innerRectWidth / 2 - SnookerSize.ballRadius)
+                        x = SnookerSize.innerRectWidth / 2 - SnookerSize.ballRadius;
+                    if (y < SnookerSize.innerRectHeight / 4 + SnookerSize.ballRadius)
+                        y = SnookerSize.innerRectHeight / 4 + SnookerSize.ballRadius;
+                    else if (y > SnookerSize.innerRectHeight / 2 - SnookerSize.ballRadius)
+                        y = SnookerSize.innerRectHeight / 2 - SnookerSize.ballRadius;
                     ball.setTransform(new Vec2(x, y), 0);
                     break;
             }
-            return true;
+        } else if (mode == MODE.END) {
+
         } else if (canHitBall) {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -96,10 +119,12 @@ public class InterfaceView extends View {
                     break;
                 case MotionEvent.ACTION_UP:
                     if (move.length() <= 600) {
-                        ball.applyForceToCenter(move.mul(-1f / 50f));
+                        listNum = list.size();
+                        ((MainActivity)getContext()).HitWhiteBall(move.mul(-1f / 50f));
                         canHitBall = false;
                     } else if (move.length() <= 800) {
-                        ball.applyForceToCenter(move.mul(-12 / move.length()));
+                        listNum = list.size();
+                        ((MainActivity)getContext()).HitWhiteBall(move.mul(-12 / move.length()));
                         canHitBall = false;
                     }
                     mode = MODE.NORMAL;
@@ -137,6 +162,17 @@ public class InterfaceView extends View {
         }
         canvas.restore();
 
+        canvas.save();
+        canvas.translate(getWidth() >> 1, getHeight() - ballRadius * 1.5f);
+        paint.setColor(is1P ? Color.YELLOW : Color.BLUE);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(3);
+        canvas.scale(2, 2);
+        canvas.drawRect(-ballRadius, -ballRadius * .5f, ballRadius, ballRadius * .5f, paint);
+        paint.setStyle(Paint.Style.FILL);
+        canvas.drawText(is1P ? "1P" : "2P", 0, adjY, paint);
+        canvas.restore();
+
         switch (mode) {
             case AIMING:
                 canvas.translate(getWidth() >> 1, getHeight() >> 1);
@@ -146,7 +182,7 @@ public class InterfaceView extends View {
                     paint.setStrokeWidth(3);
                     paint.setColor(Color.WHITE);
                     canvas.drawCircle(p.x * rate, p.y * rate, ballRadius + move.length() / 5, paint);
-                    paint.setColor(Color.BLACK);
+                    paint.setColor(is1P ? Color.YELLOW : Color.BLUE);
                     canvas.drawLine(p.x * rate + move.mul(ballRadius / move.length() + 0.2f).x, p.y * rate + move.mul(ballRadius / move.length() + 0.2f).y, p.x * rate + move.mul(ballRadius / move.length()).x, p.y * rate + move.mul(ballRadius / move.length()).y, paint);
                     paint.setStyle(Paint.Style.FILL);
                 } else if (move.length() <= 800) {
@@ -154,7 +190,7 @@ public class InterfaceView extends View {
                     paint.setStrokeWidth(3);
                     paint.setColor(Color.WHITE);
                     canvas.drawCircle(p.x * rate, p.y * rate, ballRadius + 120, paint);
-                    paint.setColor(Color.BLACK);
+                    paint.setColor(is1P ? Color.YELLOW : Color.BLUE);
                     canvas.drawLine(p.x * rate + move.mul((ballRadius + 120) / move.length()).x, p.y * rate + move.mul((ballRadius + 120) / move.length()).y, p.x * rate + move.mul(ballRadius / move.length()).x, p.y * rate + move.mul(ballRadius / move.length()).y, paint);
                     paint.setStyle(Paint.Style.FILL);
                 } else {
@@ -174,6 +210,8 @@ public class InterfaceView extends View {
 
     public void setCanHitBall(boolean canHitBall) {
         this.canHitBall = canHitBall;
+        if (listNum == list.size())
+            is1P = !is1P;
         invalidate();
     }
 

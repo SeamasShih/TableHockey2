@@ -1,6 +1,6 @@
 package com.seamas.tablehockey2;
 
-public class BilliardSize {
+public class SnookerSize {
     public static float outerRectWidth = 1.32f;
     public static float outerRectHeight = 2.59f;
     public static float innerRectWidth = 1.27f;
